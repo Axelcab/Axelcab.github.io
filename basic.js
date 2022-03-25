@@ -467,13 +467,32 @@ window.onload = function() {
                 if (!(i>1 && i%aisle_freq == 0) & !(j>= (level.rows-dispatch_zone_size))){
                     // The position must be empty
                     if (level.tiles[i][j].type == 1){
-                        return [i, j]
+                        console.log("se manda la posicion: ["+i+","+j+"]")
+                        console.log("se devuelve la posicion: ["+JSON.stringify(getBestChoice(i,j))+"]")
+                        return getBestChoice(i,j)
                     }
                     
                 }
             }
         }
         return [-1, -1]
+    }
+
+    function getBestChoice(x,y){
+        var x_aisle = getClosestAisle(x);
+        var aisle_reach = aisle_freq
+        if (x_aisle < x){
+            if((x_aisle/aisle_freq) != Math.floor((level.columns-1)/aisle_freq)){
+                aisle_reach = Math.ceil(aisle_reach/2)
+            }
+
+            for(i=x_aisle+aisle_reach; i>x; i--){
+                if(level.tiles[i][y].type==1){
+                    return [i,y]
+                }
+            }
+        }
+        return [x,y];
     }
 
     function sendToDelivery(x,y){
