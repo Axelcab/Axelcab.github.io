@@ -545,13 +545,11 @@ window.onload = function() {
     }
 
     function isEmptyRow(xmin, xmax, y){
-        console.log("row is empty? "+xmin+"-"+xmax)
         for(i=xmin; i<xmax; i++){
             if(level.tiles[i][y].type != 1){
                 return false;
             }
         }
-        console.log("row is empty!!!")
         return true;
     }
 
