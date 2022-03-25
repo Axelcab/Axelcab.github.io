@@ -289,6 +289,13 @@ window.onload = function() {
         // while the desired unit is not neighbour to an aisle
         var posx = x;
 
+        if(x_to_aisle< 2 | isEmptyRow(x+1, x+x_to_aisle+1, y)){
+            moveRight(x,y,x+x_to_aisle)
+            sendToDelivery(x+x_to_aisle, y)
+            return;
+        }
+
+
         while(posx < (x+x_to_aisle-1)){
 
             // move row to the right
@@ -323,6 +330,13 @@ window.onload = function() {
         }
         posx = x;
         x_to_aisle = distance_to_aisle
+
+        if(x_to_aisle> -2 | isEmptyRow(x+x_to_aisle, x, y)){
+            moveLeft(x,y,x+x_to_aisle)
+            sendToDelivery(x+x_to_aisle, y)
+            return;
+        }
+
         // while the desired unit is not neighbour to an aisle
         while(posx > (x+x_to_aisle+1)){
 
@@ -518,7 +532,28 @@ window.onload = function() {
         }
     }
 
+    function moveRight(x, y, end){
+        for(i=x; end>i; i++){
+            moves.push([i, i+1, y, y])
+        }
+    }
 
+    function moveLeft(x, y, end){
+        for(i=x; i>end; i--){
+            moves.push([i, i-1, y, y])
+        }
+    }
+
+    function isEmptyRow(xmin, xmax, y){
+        console.log("row is empty? "+xmin+"-"+xmax)
+        for(i=xmin; i<xmax; i++){
+            if(level.tiles[i][y].type != 1){
+                return false;
+            }
+        }
+        console.log("row is empty!!!")
+        return true;
+    }
 
     // Call init to start the simulation
     init();
