@@ -191,6 +191,9 @@ window.onload = function() {
     
     // On mouse button click
     function onMouseDown(e) {
+        if (moves.length>1){
+            return;
+        }
         // Get the mouse position
         var pos = getMousePos(canvas, e);
         // alert(pos)
