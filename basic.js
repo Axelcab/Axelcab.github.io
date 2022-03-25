@@ -24,8 +24,11 @@ window.onload = function() {
                       [0, 0, 0],
                       [250, 253, 15]];
     
+    // counter of renders for movement control
     var timer = 0;
+    // number of renders before printing next move
     var endtime = 30;
+    // array that contains a queue of next moves to process
     var moves = [];
 
     
@@ -35,6 +38,7 @@ window.onload = function() {
                     { x: 30, y: 300, width: 150, height: 50, text: "Show Moves"},
                     { x: 30, y: 360, width: 150, height: 50, text: "Enable AI Bot"}];
 
+    // unique identifier integer  
     var uuid = 0;
     
     // Initialize the game
@@ -107,7 +111,7 @@ window.onload = function() {
         // Draw title
         context.fillStyle = "#ffffff";
         context.font = "24px Verdana";
-        context.fillText("DIY Unit mockup v0.2", 10, 30);
+        context.fillText("DIY Unit mockup v0.3", 10, 30);
 
     }
     
@@ -302,6 +306,8 @@ window.onload = function() {
 
 
         // while the desired unit is not neighbour to an aisle
+        var posx = x;
+
         while(posx < (x+x_to_aisle-1)){
 
             // move row to the right
