@@ -32,11 +32,6 @@ window.onload = function() {
     var moves = [];
 
     
-    
-    // Gui buttons
-    var buttons = [ { x: 30, y: 240, width: 150, height: 50, text: "New Game"},
-                    { x: 30, y: 300, width: 150, height: 50, text: "Show Moves"},
-                    { x: 30, y: 360, width: 150, height: 50, text: "Enable AI Bot"}];
 
     // unique identifier integer  
     var uuid = 0;
@@ -81,10 +76,7 @@ window.onload = function() {
     function render() {
         // Draw the frame
         drawFrame();
-        
-        
-        // Draw buttons
-        // drawButtons();
+
         
         // Draw level background
         var levelwidth = level.columns * level.tilewidth;
@@ -111,24 +103,10 @@ window.onload = function() {
         // Draw title
         context.fillStyle = "#ffffff";
         context.font = "24px Verdana";
-        context.fillText("DIY Unit mockup v0.3", 10, 30);
+        context.fillText("DIY Unit mockup v0.2", 10, 30);
 
     }
     
-    // Draw buttons
-    function drawButtons() {
-        for (var i=0; i<buttons.length; i++) {
-            // Draw button shape
-            context.fillStyle = "#000000";
-            context.fillRect(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height);
-            
-            // Draw button text
-            context.fillStyle = "#ffffff";
-            context.font = "18px Verdana";
-            var textdim = context.measureText(buttons[i].text);
-            context.fillText(buttons[i].text, buttons[i].x + (buttons[i].width-textdim.width)/2, buttons[i].y+30);
-        }
-    }
     
     // Render tiles
     function renderTiles() {
