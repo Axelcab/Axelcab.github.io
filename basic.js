@@ -103,7 +103,7 @@ window.onload = function() {
         // Draw title
         context.fillStyle = "#ffffff";
         context.font = "24px Verdana";
-        context.fillText("DIY Unit mockup v0.2", 10, 30);
+        context.fillText("DIY Unit mockup v0.3", 10, 30);
 
     }
     
