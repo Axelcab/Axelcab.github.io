@@ -5,7 +5,10 @@ window.onload = function() {
     
     var aisle_freq = 6;
     var dispatch_zone_size = 2;
-    
+    var still_block = 0;
+    var empty = 1;
+    var blocked = 2;
+    var moving = 3;
     
     // Level object
     var level = {
@@ -20,9 +23,11 @@ window.onload = function() {
     };
     
     // All of the different tile colors in RGB
-    var tilecolors = [[255, 128, 128],
-                      [0, 0, 0],
-                      [250, 253, 15]];
+    var tilecolors = [[255, 128, 128], // red for still units
+                      [0, 0, 0], // black for empty cells
+                      [128, 128, 128], // grey for blocked cells
+                      [250, 253, 15] // yellow for moving units
+                    ];
     
     // counter of renders for movement control
     var timer = 0;
@@ -30,6 +35,11 @@ window.onload = function() {
     var endtime = 30;
     // array that contains a queue of next moves to process
     var moves = [];
+
+    var blocked_columns = {
+                            "3+2":true, "9+2":true, "15+2":true,
+                            "3+5":true, "9+5":true, "15+5":true,
+                          }
 
     
 
@@ -49,12 +59,17 @@ window.onload = function() {
             level.tiles[i] = [];
             for (var j=0; j<level.rows; j++) {
                 // Define a tile type and a shift parameter for animation
-                if ((i>1 && i%aisle_freq == 0) | (j>= (level.rows-dispatch_zone_size))){
-                    level.tiles[i][j] = { type: 1, shift:0, uid:-1 };
-                    
-                }else{
-                    level.tiles[i][j] = { type: 0, shift:0, uid:uuid };
-                    uuid += 1;
+                if(!blocked_columns[i+"+"+j]){
+                    if ((i>1 && i%aisle_freq == 0) | (j>= (level.rows-dispatch_zone_size))){
+                        level.tiles[i][j] = { type: 1, shift:0, uid:-1 };
+                        
+                    }else{
+                        level.tiles[i][j] = { type: 0, shift:0, uid:uuid };
+                        uuid += 1;
+                    }
+                }
+                else{
+                    level.tiles[i][j] = { type: 2, shift:0, uid:-1 };
                 }
             }
         }
@@ -103,7 +118,7 @@ window.onload = function() {
         // Draw title
         context.fillStyle = "#ffffff";
         context.font = "24px Verdana";
-        context.fillText("DIY Unit mockup v0.3", 10, 30);
+        context.fillText("DIY Unit mockup v0.4", 10, 30);
 
     }
     
@@ -216,14 +231,15 @@ window.onload = function() {
                 level.selectedtile.row = mt.y;
                 level.selectedtile.selected = true;
 
-                if (level.tiles[mt.x][mt.y].type!=1){
+                if (level.tiles[mt.x][mt.y].type==still_block || level.tiles[mt.x][mt.y].type==moving){
                     if (mt.y == (level.rows-1)){
-                        changeColor(mt.x,mt.y, 0)
+                        // The unit does not move anymore
+                        changeColor(mt.x,mt.y, still_block)
                         returnUnit(mt.x,mt.y)
                     }else{
                         if (isDeliveryEmpty()){
                             // the tile changes color
-                            changeColor(mt.x,mt.y, 2)
+                            changeColor(mt.x,mt.y, moving)
                             // the tile moves forward
                             moveRow(mt.x,mt.y)
                         }else{
@@ -283,19 +299,99 @@ window.onload = function() {
     function moveRowRight(x, y, up_or_down){
         var distance_to_aisle = getClosestAisle(x)-x
 
-        var x_to_aisle = distance_to_aisle
-
-
-        // while the desired unit is not neighbour to an aisle
-        var posx = x;
-
-        if(x_to_aisle< 2 | isEmptyRow(x+1, x+x_to_aisle+1, y)){
-            moveRight(x,y,x+x_to_aisle)
-            sendToDelivery(x+x_to_aisle, y)
+        // if the row is empty or the unit is next to the aisle then it directly moves
+        if(distance_to_aisle< 2 | isEmptyRow(x+1, x+distance_to_aisle+1, y)){
+            moveRight(x,y,x+distance_to_aisle)
+            sendToDelivery(x+distance_to_aisle, y)
             return;
         }
+        // assumption: there are no columns in consecutive rows and at least 2 rows between columns
+        if(checkBlock(x, y, x+distance_to_aisle, 1)){
+            if (up_or_down>0){
+                moveToLowerRowRight(x, y, distance_to_aisle)
+            }else{
+                moveToUpperRowRight(x, y, distance_to_aisle)
+            }
+            
+            rightMovementLogic(x+1, y+up_or_down, up_or_down, distance_to_aisle-1)
+        }else{
+            rightMovementLogic(x, y, up_or_down, distance_to_aisle)
+        }
+
+    }
+
+    function moveToUpperRowRight(x, y, distance_to_aisle){
+        // leave an empty space in the upper row
+        pushR(x, y-1, x+distance_to_aisle)
+
+        // fill the space with our unit
+        pushUp(x,y,y-1)
+
+        // leave an empty space in the aisle
+        pushUp(x+distance_to_aisle,y-1,y-2)
 
 
+        // leave a spot to reorder units
+        pushR(x, y-1, x+distance_to_aisle)
+
+        // move first unit to fill the original gap
+        pushDown(x, y-2, y-1)
+        pushDown(x, y-1, y)
+
+        // fill the gap letting the upper aisle empty
+        pushL(x+distance_to_aisle, y-2, x)
+
+        // refill the upper aisle
+        pushUp(x+distance_to_aisle,y-1,y-2)
+
+        // refill lower row
+        pushDown(x, y-2, y-1)
+
+        // leave aisle empty
+        pushL(x+distance_to_aisle, y-2, x)
+
+    }
+
+    function moveToLowerRowRight(x, y, distance_to_aisle){
+        // leave an empty space in the lower row
+        pushR(x, y+1, x+distance_to_aisle)
+
+        // fill the space with our unit
+        pushDown(x,y,y+1)
+
+        // leave an empty space in the aisle
+        pushDown(x+distance_to_aisle,y+1,y+2)
+
+
+        // leave a spot to reorder units
+        pushR(x, y+1, x+distance_to_aisle)
+
+        // move first unit to fill the original gap
+        pushUp(x, y+2, y+1)
+        pushUp(x, y+1, y)
+
+        // fill the gap letting the upper aisle empty
+        pushL(x+distance_to_aisle, y+2, x)
+
+        // refill the lower aisle
+        pushDown(x+distance_to_aisle,y+1,y+2)
+
+        // refill upper row
+        pushUp(x, y+2, y+1)
+
+        // leave aisle empty
+        pushL(x+distance_to_aisle, y+2, x)
+
+    }
+
+
+
+    function rightMovementLogic(x, y, up_or_down, distance_to_aisle){ 
+
+        var x_to_aisle = distance_to_aisle
+        var posx = x;
+    
+        // while the desired unit is not neighbour to an aisle
         while(posx < (x+x_to_aisle-1)){
 
             // move row to the right
@@ -328,14 +424,95 @@ window.onload = function() {
             distance_to_aisle = x%aisle_freq;
             distance_to_aisle = -distance_to_aisle
         }
-        posx = x;
-        x_to_aisle = distance_to_aisle
 
-        if(x_to_aisle> -2 | isEmptyRow(x+x_to_aisle, x, y)){
-            moveLeft(x,y,x+x_to_aisle)
-            sendToDelivery(x+x_to_aisle, y)
+        if(distance_to_aisle> -2 | isEmptyRow(x+distance_to_aisle, x, y)){
+            moveLeft(x,y,x+distance_to_aisle)
+            sendToDelivery(x+distance_to_aisle, y)
             return;
         }
+
+        if(checkBlock(x, y, x+distance_to_aisle, -1)){
+            if (up_or_down>0){
+                moveToLowerRowLeft(x, y, distance_to_aisle)
+            }else{
+                moveToUpperRowLeft(x, y, distance_to_aisle)
+            }
+            
+            leftMovementLogic(x-1, y+up_or_down, up_or_down, distance_to_aisle+1)
+        }else{
+            leftMovementLogic(x, y, up_or_down, distance_to_aisle)
+        }
+
+    }
+
+    function moveToUpperRowLeft(x, y, distance_to_aisle){
+        // leave an empty space in the upper row
+        pushL(x, y-1, x+distance_to_aisle)
+
+        // fill the space with our unit
+        pushUp(x,y,y-1)
+
+        // leave an empty space in the aisle
+        pushUp(x+distance_to_aisle,y-1,y-2)
+
+
+        // leave a spot to reorder units
+        pushL(x, y-1, x+distance_to_aisle)
+
+        // move first unit to fill the original gap
+        pushDown(x, y-2, y-1)
+        pushDown(x, y-1, y)
+
+        // fill the gap letting the upper aisle empty
+        pushR(x+distance_to_aisle, y-2, x)
+
+        // refill the upper aisle
+        pushUp(x+distance_to_aisle,y-1,y-2)
+
+        // refill lower row
+        pushDown(x, y-2, y-1)
+
+        // leave aisle empty
+        pushR(x+distance_to_aisle, y-2, x)
+
+    }
+
+    function moveToLowerRowLeft(x, y, distance_to_aisle){
+        // leave an empty space in the lower row
+        pushL(x, y+1, x+distance_to_aisle)
+
+        // fill the space with our unit
+        pushDown(x,y,y+1)
+
+        // leave an empty space in the aisle
+        pushDown(x+distance_to_aisle,y+1,y+2)
+
+
+        // leave a spot to reorder units
+        pushL(x, y+1, x+distance_to_aisle)
+
+        // move first unit to fill the original gap
+        pushUp(x, y+2, y+1)
+        pushUp(x, y+1, y)
+
+        // fill the gap letting the upper aisle empty
+        pushR(x+distance_to_aisle, y+2, x)
+
+        // refill the lower aisle
+        pushDown(x+distance_to_aisle,y+1,y+2)
+
+        // refill upper row
+        pushUp(x, y+2, y+1)
+
+        // leave aisle empty
+        pushR(x+distance_to_aisle, y+2, x)
+
+    }
+
+
+    function leftMovementLogic(x, y, up_or_down, distance_to_aisle){
+        var posx = x;
+        var x_to_aisle = distance_to_aisle
 
         // while the desired unit is not neighbour to an aisle
         while(posx > (x+x_to_aisle+1)){
@@ -365,13 +542,12 @@ window.onload = function() {
 
 
     function swap(xa, xb, ya, yb){
-        if (level.tiles[xb][yb].type==1){
+        if (level.tiles[xb][yb].type==empty){
             var oriunit = level.tiles[xa][ya];
             level.tiles[xa][ya] = level.tiles[xb][yb];
             level.tiles[xb][yb] = oriunit;
 
         }else{
-            //alert("trying to move to not empty position "+ xb + "," + yb + "")
             console.log("trying to move to not empty position "+ xb + "," + yb + "")
         }
     }
@@ -425,7 +601,7 @@ window.onload = function() {
 
     function isDeliveryEmpty(){
         for (j = 0; j<level.columns;j++){
-            if(level.tiles[j][level.rows-1].type==1){
+            if(level.tiles[j][level.rows-1].type==empty){
                 return true;
             }
         }
@@ -434,7 +610,7 @@ window.onload = function() {
 
     function getDeliveryPos(){
         for (j = 0; j<level.columns;j++){
-            if(level.tiles[j][level.rows-1].type==1){
+            if(level.tiles[j][level.rows-1].type==empty){
                 return [j, level.rows-1];
             }
         }
@@ -486,8 +662,9 @@ window.onload = function() {
                 aisle_reach = Math.ceil(aisle_reach/2)
             }
 
-            for(i=x_aisle+aisle_reach; i>x; i--){
-                if(level.tiles[i][y].type==1){
+            for(i=x_aisle+aisle_reach-1; i>x; i--){
+                console.log("i:"+i+" __ j:"+j)
+                if(level.tiles[i][y].type==empty){
                     return [i,y]
                 }
             }
@@ -530,19 +707,25 @@ window.onload = function() {
     // push all units of a row one position to the right
     function pushR(x, y, end){
         for(i=end; i>x; i--){
-            moves.push([i, i-1, y, y]);
+            moves.push([i-1, i, y, y]);
         }
     }
 
     // push all units of a row one position to the left
     function pushL(x, y, end){
         for(i=end; i<x; i++){
-            moves.push([i, i+1, y, y]);
+            moves.push([i+1, i, y, y]);
         }
     }
 
     function fill_upper_lower(x, y, upper_lower){
         moves.push(x, x, y, y+upper_lower);
+    }
+
+    function pushUp(x, y, end){
+        for(i=end; i<y; i++){
+            moves.push([x, x, i+1, i])
+        }
     }
 
     function pushDown(x, y, end){
@@ -570,6 +753,17 @@ window.onload = function() {
             }
         }
         return true;
+    }
+
+    function checkBlock(x, y, aisle, movement_direction){
+        var current_pos = x;
+        while(current_pos!= aisle){
+            if (level.tiles[current_pos][y].type==blocked){
+                return true;
+            }
+            current_pos += movement_direction;
+        }
+        return false;
     }
 
     // Call init to start the simulation
